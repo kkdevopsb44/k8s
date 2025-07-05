@@ -1,119 +1,109 @@
+# Kubernetes RBAC — Hands‑On Guide
 
+Role‑Based Access Control (RBAC) in Kubernetes is a powerful method for regulating access to the Kubernetes API based on the roles of individual users or groups.
 
+---
 
-RBAC
-====
+## Key Components
 
+| Component | Scope | Purpose |
+|-----------|-------|---------|
+| **Role** | Namespace‑scoped | Grants permissions (e.g., `pods`, `deployments`) **within a single namespace**. |
+| **ClusterRole** | Cluster‑wide | Same as Role, but applies across **all namespaces** and to cluster‑scoped resources. |
+| **RoleBinding** | Namespace‑scoped | **Binds** a Role to a user/group/service‑account **within one namespace**. |
+| **ClusterRoleBinding** | Cluster‑wide | **Binds** a ClusterRole to a user/group/service‑account **across the entire cluster**. |
 
-RBAC (Role-Based Access Control) in Kubernetes is a powerful method for regulating access to the Kubernetes API based on the roles of individual users or groups. Here's a breakdown of its key components and how it works:
+---
 
-Key Components
+# Practical Walk‑Through
 
-Role: Defines a set of permissions within a specific namespace. It grants access to resources like pods, deployments, etc.
+> Tested on **Windows 11** workstation + **AWS EKS** cluster.
 
-ClusterRole: Similar to a Role but applies across the entire cluster. It can be used for non-namespaced resources or for cluster-wide permissions.
+---
 
-RoleBinding: Grants the permissions defined in a Role to a user or a group within a specific namespace.
+## Step 1 — Install `kubectl` (Windows)
 
-ClusterRoleBinding: Grants the permissions defined in a ClusterRole to a user or a group across the entire cluster.
+Official docs → <https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/>
 
-
-Practical
-=========
-
-step 1: install kubectl in your system(windows)
-------
-
-link: https://kubernetes.io/docs/tasks/tools/install-kubectl-windows/
-
+```powershell
+# v1.31.0
 curl.exe -LO "https://dl.k8s.io/release/v1.31.0/bin/windows/amd64/kubectl.exe"
 
-      or
-
+# or v1.32.0
 curl.exe -LO "https://dl.k8s.io/release/v1.32.0/bin/windows/amd64/kubectl.exe"
+```
 
+Add the folder that contains **`kubectl.exe`**  
+(e.g., `C:\Users\gpras\OneDrive\Desktop\rbac-practise`)  
+to **System Properties → Environment Variables → Path**.
 
+---
 
+## Step 2 — Install AWS CLI
 
+Docs → <https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html>
 
-add the environment details.
-
-C:\Users\gpras\OneDrive\Desktop\rbac-practise  --> add env path
-
-step 2: Install aws cli
--------
-
-link: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
-
-Download and run the AWS CLI MSI installer for Windows (64-bit):
-
+```powershell
+# Download & run the 64‑bit MSI
 https://awscli.amazonaws.com/AWSCLIV2.msi
+```
 
+---
 
+## Step 3 — Create an IAM User + Keys
 
-step 3: create IAM user and create a access and seceret key for that user
-------
+1. Sign in: <https://640168417733.signin.aws.amazon.com/console>  
+2. User name: **`kkfunda`**  
+3. Password: **`Vision@2030`** (example)  
+4. Generate **Access Key ID (AK)** and **Secret Access Key (SK)**.
 
+```
+AK: <your-access-key>
+SK: <your-secret-key>
+```
 
-https://640168417733.signin.aws.amazon.com/console
+---
 
-kkfunda
+## Step 4 — Configure AWS CLI + Connect to EKS
 
-Vision@2030
-
-
-AK: 
-
-SK: 
-
-
-
-
-
-
-
-step 4: we need aws permissions
--------
-
+```bash
 aws configure
+# Access Key ID:  <AK>
+# Secret Access Key: <SK>
+# Default region name: ap-south-1
+# Default output format: table
+```
 
-access key: 
-secret key:
-region: ap-south-1
-format: table
+Verify access:
 
+```bash
 aws sts get-caller-identity
-
 aws eks list-clusters
 aws eks update-kubeconfig --name EKS-Demo123 --region ap-southeast-1
+```
 
+---
 
-step 5: create eks read-only policy and attach to the user
--------
+## Step 5 — (If Needed) Attach Read‑Only EKS Policy
 
+```bash
 aws sts get-caller-identity
+aws iam attach-user-policy   --user-name kkfunda   --policy-arn arn:aws:iam::aws:policy/AmazonEKSReadOnlyAccess
+```
 
-aws eks list-clusters
-aws eks update-kubeconfig --name EKS-Demo123 --region ap-southeast-1
+---
 
-cat /c/Users/gpras/.kube/config
+## Step 6 — Map the IAM User in `aws-auth` ConfigMap
 
-But we are not able to list kubectl get po, etc
+From a Linux bastion (or wherever you have cluster‑admin `kubectl`):
 
+```bash
+kubectl edit -n kube-system configmap/aws-auth
+```
 
+Add the user:
 
-step 6: connect to linux machine where we have k8s admin cli access.
--------
-
-kubectl get cm -n kube-system
-
-cm: aws-auth
-
-NOTE: add users
-
-kubectl edit cm aws-auth -n kube-system
-
-
+```yaml
 apiVersion: v1
 data:
   mapRoles: |
@@ -123,30 +113,30 @@ data:
       rolearn: arn:aws:iam::418295704475:role/EKS-worker-role-class
       username: system:node:{{EC2PrivateDNSName}}
   mapUsers: |
-    - userarn: arn:aws:iam::418295704475:user/prasanth
-      username: prasanth
+    - userarn: arn:aws:iam::418295704475:user/kkfunda
+      username: kkfunda
 kind: ConfigMap
 metadata:
-  creationTimestamp: "2024-10-11T07:12:50Z"
   name: aws-auth
   namespace: kube-system
-  resourceVersion: "52395"
-  uid: fe764e06-c2ec-4f84-bc3b-5732c1ebfaeb
+```
 
+Save & exit. The IAM user **`kkfunda`** can now authenticate to the cluster.
 
+---
 
-kubectl get pods --> we dont have permission
+# RBAC Objects
 
+Below are two sets of manifests:
 
-srihari --> RBAC
+* **Namespace‑scoped read‑only access** (`Role` + `RoleBinding`)
+* **Cluster‑admin access** (`ClusterRole` + `ClusterRoleBinding`)
 
-sai --> admin
+---
 
+## 1 — Role & RoleBinding (Namespace = `test-ns`)
 
-=================================
-
---> Now create Role and RoleBinding
-
+```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -159,7 +149,6 @@ rules:
 - apiGroups: ["apps"]
   resources: ["deployments"]
   verbs: ["get", "watch", "list"]
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -174,13 +163,19 @@ roleRef:
   kind: Role
   name: pod-reader
   apiGroup: rbac.authorization.k8s.io
+```
 
+Apply:
 
+```bash
+kubectl apply -f pod-reader-rb.yaml
+```
 
+---
 
-=========
+## 2 — ClusterRole & ClusterRoleBinding (Full Admin)
 
-
+```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -189,7 +184,6 @@ rules:
 - apiGroups: ["*"]
   resources: ["*"]
   verbs: ["*"]
-
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -203,28 +197,40 @@ roleRef:
   kind: ClusterRole
   name: fullaccesscr
   apiGroup: rbac.authorization.k8s.io
+```
 
+Apply:
 
+```bash
+kubectl apply -f cluster-admin.yaml
+```
 
+---
 
+# Verification Commands
 
+```bash
+# Check namespace‑scoped permissions
+kubectl auth can-i list pods --as kkfunda -n test-ns
+# → yes
 
+# Check cluster‑wide permissions
+kubectl auth can-i list nodes --as kkfunda
+# → yes  (only if ClusterRoleBinding is applied)
+```
 
+If both return **`yes`**, RBAC is configured correctly.
 
+---
 
+## Troubleshooting Checklist
 
+| Symptom | What to Check |
+|---------|---------------|
+| `Forbidden` errors | ‑ Correct Role/ClusterRole?  <br>‑ RoleBinding/ClusterRoleBinding subject name matches IAM user in `aws-auth`. |
+| `iam authenticator: access denied` | ‑ User/role missing from `aws-auth` ConfigMap. |
+| Uses but cannot list cluster resources | ‑ Has only namespace RoleBinding; need ClusterRoleBinding. |
 
+---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+**Happy clustering!** 🐳⚙️
