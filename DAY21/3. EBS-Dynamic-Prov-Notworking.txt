@@ -1,0 +1,62 @@
+EBS Dynamic Provisioning Not Working 
+====================================
+By default, eksctl does not install the EBS CSI driver
+
+Step-by-Step Fix
+================
+Step 1: Install the AWS EBS CSI Driver
+
+--> By default, eksctl does not install the EBS CSI driver.
+
+--> So we need to manually install it using the official overlay:
+
+kubectl apply -k "github.com/kubernetes-sigs/aws-ebs-csi-driver/deploy/kubernetes/overlays/stable/?ref=release-1.35"
+ 
+What this does:
+===============
+
+Installs the Controller, DaemonSet, and ServiceAccounts
+
+Deploys required RBAC roles & bindings
+
+Registers the ebs.csi.aws.com driver to your cluster
+
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+Step 2: Attach IAM Policies to Worker Node Role
+======
+
+--> Even after installing the driver, your PVC might still show as Pending.
+
+-->That’s because your Node Group’s EC2 IAM Role doesn’t have permission to manage EBS.
+                                
+-->So we must manually attach IAM policies.
+
+1. Go to AWS Console
+
+2.IAM → Click on it
+
+3.Look for the role that looks like:
+
+eksctl-my-cluster-nodegroup-mynode-NodeInstanceRole
+
+4.Click on that role.
+
+5. Inside the role: Click on Add permissions Then click on Attach policies
+
+Search and Attach the following AWS-managed policy
+
+AmazonEBSCSIDriverPolicy
+
+-----------------------------------------------------------------------------------------------------------------------------------------------
+
+
+Step 3: Don’t Forget the StorageClass
+=====
+In your StatefulSet or PVC definition, make sure you use the correct storageClassName.
+
+storageClassName: gp2
+Without this, your volume won’t provision even if permissions and driver are correct.
+
+
+====================================================================================================================

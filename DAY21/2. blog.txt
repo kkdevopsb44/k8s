@@ -1,0 +1,1 @@
+https://getting-started-with-kubernetes.hashnode.dev/a-beginners-guide-to-statefulsets-ensuring-data-persistence-in-kubernetes?source=more_articles_bottom_blogs
