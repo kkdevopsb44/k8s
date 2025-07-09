@@ -10,11 +10,11 @@
 ---
 
 
-# ✅ Complete Kubernetes Ingress Setup on AWS EKS (With NGINX Ingress Controller)
+#  Complete Kubernetes Ingress Setup on AWS EKS (With NGINX Ingress Controller)
 
 ---
 
-## ✅ 1. Deploy Java Web Application (Deployment + Service)
+##  1. Deploy Java Web Application (Deployment + Service)
 
 ```yaml
 apiVersion: apps/v1
@@ -57,7 +57,7 @@ spec:
 
 ---
 
-## ✅ 2. Install NGINX Ingress Controller Using Helm
+##  2. Install NGINX Ingress Controller Using Helm
 
 ```bash
 # Install Helm (if not installed)
@@ -73,7 +73,7 @@ helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx
 
 ---
 
-## ✅ 3. Check Ingress Controller LoadBalancer IP
+##  3. Check Ingress Controller LoadBalancer IP
 
 ```bash
 kubectl get svc -n ingress-nginx
@@ -87,7 +87,7 @@ ingress-nginx-controller LoadBalancer a8c9a4e82fb4d4726bb07851f26acae8-181029113
 
 ---
 
-## ✅ 4. Create Ingress Resource
+##  4. Create Ingress Resource
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -120,7 +120,7 @@ kubectl apply -f javawebapp-ingress.yaml
 
 ---
 
-## ✅ 5. Update `/etc/hosts` for DNS Mapping (Linux & Windows)
+##  5. Update `/etc/hosts` for DNS Mapping (Linux & Windows)
 
 ### ➜ Find LoadBalancer IP:
 
@@ -137,7 +137,7 @@ Example IPs:
 
 ### ➜ Add Entry:
 
-#### ✅ On Linux:
+####  On Linux:
 
 ```bash
 sudo vi /etc/hosts
@@ -150,7 +150,7 @@ Add:
 3.6.27.227 javawebapp.example.com
 ```
 
-#### ✅ On Windows:
+####  On Windows:
 
 1. Open Notepad as Administrator.
 2. Open:
@@ -170,7 +170,7 @@ C:\Windows\System32\drivers\etc\hosts
 
 ---
 
-## ✅ 6. Access From Browser
+## 6. Access From Browser
 
 Open:
 
@@ -178,11 +178,11 @@ Open:
 http://javawebapp.example.com
 ```
 
-✅ Now your app is accessible via browser.
+ Now your app is accessible via browser.
 
 ---
 
-## ✅ 7. NodePort vs LoadBalancer (Best Practice)
+##  7. NodePort vs LoadBalancer (Best Practice)
 
 | Method                 | Purpose             | Notes                       |
 | ---------------------- | ------------------- | --------------------------- |
@@ -191,7 +191,7 @@ http://javawebapp.example.com
 
 ---
 
-## ✅ ✅ Tips:
+##  Tips:
 
 * For quick testing, use `/etc/hosts`.
 * In production, use AWS Route53 for DNS mapping.
@@ -199,7 +199,7 @@ http://javawebapp.example.com
 
 ---
 
-## ✅ ✅ Troubleshooting:
+##  Troubleshooting:
 
 | Issue                    | Solution                                                         |
 | ------------------------ | ---------------------------------------------------------------- |
@@ -210,7 +210,7 @@ http://javawebapp.example.com
 
 ---
 
-## ✅ ✅ Diagram:
+##  Diagram:
 
 ```
 Browser → AWS LoadBalancer (Ingress) → NGINX Ingress → Service (NodePort) → Pods
